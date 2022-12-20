@@ -59,7 +59,14 @@ module.exports.MarkovChain = function() {
     }
   }
 
-  this.generateSentence = function(seedWord) {
+  this.generateSentence = function(options = {}) {
+    // If options are just a string, set it as the input option
+    if(typeof options === 'string') {
+      options = {
+        input: options
+      };
+    }
+    let seedWord = options.input;
     const sWords = Object.keys(this.startWords);
     sWords[Math.floor(Math.random()*sWords.length)];
     seedWord = seedWord ?? sWords[Math.floor(Math.random()*sWords.length)];
