@@ -59,60 +59,77 @@ module.exports.MarkovChain = function() {
     }
   }
 
-  this.generateSentence = function(options = {}) {
-    // If options are just a string, set it as the input option
+  this.generateSentence = async function(options = {}) {
+    return new Promise((resolve, reject) => {
+      // If options are just a string, set it as the input option
     if(typeof options === 'string') {
       options = {
         input: options
       };
     }
-    let seedWord = options.input;
-    const sWords = Object.keys(this.startWords);
-    sWords[Math.floor(Math.random()*sWords.length)];
-    seedWord = seedWord ?? sWords[Math.floor(Math.random()*sWords.length)];
-    // Start the sentence with the starting word
-    let sentence = seedWord;
 
-    // Set the current word to the starting word
-    let currentWord = seedWord;
+    let {
+      input,
+      retries = 20,
+      filter = (sentence) => sentence.split(' ').length >= 2,
+      prng = Math.random,
+    } = options;
 
-    // Keep generating words until we reach the end of the chain
-    while (currentWord && this.chain[currentWord]) {
-      // Choose a random next word from the list of next words for the current word
-      const nextWord = this.chooseRandomNextWord(currentWord);
+    let sentence = '';
+    for(let i = 0; i < retries; i++) {
+      const sWords = Object.keys(this.startWords);
+      sWords[Math.floor(Math.random()*sWords.length)];
+      input = input ?? sWords[Math.floor(Math.random()*sWords.length)];
+      // Start the sentence with the starting word
+      sentence = input;
 
-      // If we couldn't choose a next word, break out of the loop
-      if (!nextWord) {
-        break;
+      // Set the current word to the starting word
+      let currentWord = input;
+
+      // Keep generating words until we reach the end of the chain
+      while (currentWord && this.chain[currentWord]) {
+        // Choose a random next word from the list of next words for the current word
+        const nextWord = this.chooseRandomNextWord(currentWord);
+
+        // If we couldn't choose a next word, break out of the loop
+        if (!nextWord) {
+          break;
+        }
+
+        // Add the next word to the sentence
+        sentence += ' ' + nextWord;
+
+        // Set the current word to the next word
+        currentWord = nextWord;
       }
 
-      // Add the next word to the sentence
-      sentence += ' ' + nextWord;
+      // Return to the seed word
+      currentWord = input;
+      // Keep generating words until we reach the start of the chain
+      while (currentWord && this.chain[currentWord]) {
+        // Choose a random previous word from the list of previous words for the current word
+        const previousWord = this.chooseRandomPreviousWord(currentWord);
+        // If we couldn't choose a previous word, break out of the loop
+        if(!previousWord) {
+          break;
+        }
 
-      // Set the current word to the next word
-      currentWord = nextWord;
-    }
+        // Prenpend to previous word to the sentence
+        sentence = previousWord + ' ' + sentence;
 
-    // Return to the seed word
-    currentWord = seedWord;
-    // Keep generating words until we reach the start of the chain
-    while (currentWord && this.chain[currentWord]) {
-      // Choose a random previous word from the list of previous words for the current word
-      const previousWord = this.chooseRandomPreviousWord(currentWord);
-      // If we couldn't choose a previous word, break out of the loop
-      if(!previousWord) {
+        // Set the current word to the previous word
+        currentWord = previousWord;
+      }
+      // Check if the sentence passes the filter
+      if(filter(sentence)) {
+        // Resolve and return sentence
+        resolve(sentence);
         break;
       }
-
-      // Prenpend to previous word to the sentence
-      sentence = previousWord + ' ' + sentence;
-
-      // Set the current word to the previous word
-      currentWord = previousWord;
     }
-
     // Return the generated sentence
-    return sentence;
+    reject(`Could not generate sentence after ${retries} attempts`);
+    });
   };
 
   // A helper function that chooses a random next word from the list of next words for a given word
