@@ -3,20 +3,23 @@ module.exports.MarkovChain = function() {
   this.startWords = {};
   this.endWords = {};
 
-  this.buildChain = function(words) {
+  this.buildChain = function(words, metadata = {}) {
     // Iterate over the words and add each word to the chain
     for (let i = 0; i < words.length; i++) {
       const word = words[i];
-      const metadata = word.metadata; // The metadata for the current word
 
       // If the word is not already in the chain, add it
       if (!this.chain[word]) {
         this.chain[word] = {
-          metadata: metadata,
+          data: {
+            metadata: metadata,
+            refs: []
+          },
           nextWords: {},
           previousWords: {},
         };
       }
+      this.chain[word].data.refs.push(words.reduce((accumulator, currentWord) => accumulator + ' ' + currentWord));
       // If is a start word, and isn't already indexed as a start word
       if(i === 0 && !this.startWords[word]) {
         this.startWords[word] = this.chain[word];
@@ -41,11 +44,13 @@ module.exports.MarkovChain = function() {
     }
   };
 
-  this.addString = function(strings) {
+  this.addString = function(strings, data) {
+    // This is bad- feeding this an array of arrays could go poorly.
     if(Array.isArray(strings)) {
-      strings.forEach(str => {
-        this.addString(str);
-      });
+      console.warn('DO NOT ACCEPT ARRAY ANYMORE');
+      // strings.forEach(str => {
+      //   this.addString(str, data);
+      // });
     } else if(strings === undefined || strings === ' ' || strings === '') {
       console.warn(strings, 'not defined, skipping...');
       return;
@@ -55,7 +60,7 @@ module.exports.MarkovChain = function() {
         return;
       }
       const words = strings.split(' ');
-      this.buildChain(words);
+      this.buildChain(words, data);
     }
   }
 
@@ -78,8 +83,9 @@ module.exports.MarkovChain = function() {
     let sentence = '';
     for(let i = 0; i < retries; i++) {
       const sWords = Object.keys(this.startWords);
-      sWords[Math.floor(Math.random()*sWords.length)];
-      input = input ?? sWords[Math.floor(Math.random()*sWords.length)];
+      const referenced = [];
+      sWords[Math.floor(prng()*sWords.length)];
+      input = input ?? sWords[Math.floor(prng()*sWords.length)];
       // Start the sentence with the starting word
       sentence = input;
 
@@ -89,8 +95,8 @@ module.exports.MarkovChain = function() {
       // Keep generating words until we reach the end of the chain
       while (currentWord && this.chain[currentWord]) {
         // Choose a random next word from the list of next words for the current word
-        const nextWord = this.chooseRandomNextWord(currentWord);
-
+        const nextWord = this.chooseRandomNextWord(currentWord, prng);
+        // console.log(this.chain[nextWord]);
         // If we couldn't choose a next word, break out of the loop
         if (!nextWord) {
           break;
@@ -101,6 +107,7 @@ module.exports.MarkovChain = function() {
 
         // Set the current word to the next word
         currentWord = nextWord;
+        referenced.push(this.chain[nextWord].data);
       }
 
       // Return to the seed word
@@ -108,7 +115,8 @@ module.exports.MarkovChain = function() {
       // Keep generating words until we reach the start of the chain
       while (currentWord && this.chain[currentWord]) {
         // Choose a random previous word from the list of previous words for the current word
-        const previousWord = this.chooseRandomPreviousWord(currentWord);
+        const previousWord = this.chooseRandomPreviousWord(currentWord, prng);
+
         // If we couldn't choose a previous word, break out of the loop
         if(!previousWord) {
           break;
@@ -119,11 +127,15 @@ module.exports.MarkovChain = function() {
 
         // Set the current word to the previous word
         currentWord = previousWord;
+        referenced.push(this.chain[previousWord].data);
       }
       // Check if the sentence passes the filter
       if(filter(sentence)) {
         // Resolve and return sentence
-        resolve(sentence);
+        resolve({
+          data: referenced,
+          text: sentence
+        });
         break;
       }
     }
@@ -133,7 +145,7 @@ module.exports.MarkovChain = function() {
   };
 
   // A helper function that chooses a random next word from the list of next words for a given word
-  this.chooseRandomNextWord = function(word) {
+  this.chooseRandomNextWord = function(word, prng = Math.random) {
     // Get the list of next words for the given word
     const nextWords = this.chain[word].nextWords;
 
@@ -143,14 +155,14 @@ module.exports.MarkovChain = function() {
     }
 
     // Choose a random index from the list of next words
-    const nextWordIndex = Math.floor(Math.random() * Object.keys(nextWords).length);
+    const nextWordIndex = Math.floor(prng() * Object.keys(nextWords).length);
 
     // Return the next word at the chosen index
     return Object.keys(nextWords)[nextWordIndex];
   };
 
   // A helper function that chooses a random previous word form the list of previous words for a given word
-  this.chooseRandomPreviousWord = function(word) {
+  this.chooseRandomPreviousWord = function(word, prng = Math.random) {
     // Get the list of previous words for the given word
     const previousWords = this.chain[word].previousWords;
     // If there are no previous words, return null
@@ -159,7 +171,7 @@ module.exports.MarkovChain = function() {
     }
 
     // Choose a random index from the list of previous words
-    const previousWordIndex = Math.floor(Math.random() * Object.keys(previousWords).length);
+    const previousWordIndex = Math.floor(prng() * Object.keys(previousWords).length);
 
     // Return the previous word at the chosen index
     return Object.keys(previousWords)[previousWordIndex];
@@ -174,4 +186,5 @@ module.exports.example = function() {
   const sentence = markovChain.generateSentence('hello');
   // "hello world this is a string"
   console.log(sentence);
+  return(sentence);
 };
