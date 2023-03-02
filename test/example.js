@@ -25,7 +25,7 @@ const getwiki = async () => {
     const page = await wiki.page(pageSummary.title)
     // console.log('page', page);
     const content = await page.content();
-    // console.log(content);
+    console.log('Content: ',content);
     // console.log(dayAllContent)
     return(content);
   } catch (error) {
