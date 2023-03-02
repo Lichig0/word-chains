@@ -44,22 +44,22 @@ module.exports.MarkovChain = function() {
     }
   };
 
-  this.addString = function(strings, data) {
+  this.addString = function(sentence, data) {
     // This is bad- feeding this an array of arrays could go poorly.
-    if(Array.isArray(strings)) {
+    if(Array.isArray(sentence)) {
       console.warn('DO NOT ACCEPT ARRAY ANYMORE');
-      // strings.forEach(str => {
+      // sentence.forEach(str => {
       //   this.addString(str, data);
       // });
-    } else if(strings === undefined || strings === ' ' || strings === '') {
-      console.warn(strings, 'not defined, skipping...');
+    } else if(sentence === undefined || sentence === ' ' || sentence === '') {
+      console.warn(sentence, 'not defined, skipping...');
       return;
-    } else if (strings) {
-      if(!strings.split) {
-        console.warn(strings, 'is a bad egg');
+    } else if (sentence) {
+      if(!sentence.split) {
+        console.warn(sentence, 'is a bad egg');
         return;
       }
-      const words = strings.split(' ');
+      const words = sentence.split(' ');
       this.buildChain(words, data);
     }
   }
