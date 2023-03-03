@@ -11,15 +11,13 @@ module.exports.MarkovChain = function() {
       // If the word is not already in the chain, add it
       if (!this.chain[word]) {
         this.chain[word] = {
-          data: {
-            metadata: metadata,
-            refs: []
-          },
+          data: metadata,
+          refs: {},
           nextWords: {},
           previousWords: {},
         };
       }
-      this.chain[word].data.refs.push(words.reduce((accumulator, currentWord) => accumulator + ' ' + currentWord));
+      this.chain[word].refs[words.reduce((accumulator, currentWord) => accumulator + ' ' + currentWord)] = Date.now();
       // If is a start word, and isn't already indexed as a start word
       if(i === 0 && !this.startWords[word]) {
         this.startWords[word] = this.chain[word];
@@ -83,7 +81,8 @@ module.exports.MarkovChain = function() {
     let sentence = '';
     for(let i = 0; i < retries; i++) {
       const sWords = Object.keys(this.startWords);
-      const referenced = [];
+      const meta = [];
+      let referenced = {};
       sWords[Math.floor(prng()*sWords.length)];
       input = input ?? sWords[Math.floor(prng()*sWords.length)];
       // Start the sentence with the starting word
@@ -107,7 +106,8 @@ module.exports.MarkovChain = function() {
 
         // Set the current word to the next word
         currentWord = nextWord;
-        referenced.push(this.chain[nextWord].data);
+        meta.push(this.chain[nextWord].data)
+        referenced = {...referenced, ...this.chain[nextWord].refs};
       }
 
       // Return to the seed word
@@ -127,13 +127,15 @@ module.exports.MarkovChain = function() {
 
         // Set the current word to the previous word
         currentWord = previousWord;
-        referenced.push(this.chain[previousWord].data);
+        meta.push(this.chain[previousWord].data)
+        referenced = {...referenced, ...this.chain[previousWord].refs};
       }
       // Check if the sentence passes the filter
       if(filter(sentence)) {
         // Resolve and return sentence
         resolve({
-          data: referenced,
+          refs: referenced,
+          data: meta,
           text: sentence
         });
         break;

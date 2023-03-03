@@ -1,7 +1,8 @@
 const Markov = require('../src/Markov');
 
 let markovChain;
-const exmpleSentence = 'Hello world this is a string with metadata!';
+const exampleSentence = 'Hello world this is a string with metadata!';
+const exampleMetadata = { id: 12345, aBool: false}
 const staticPrng = () => 0.69;
 const staticResponse = 'By analogy, quasi-Monte Carlo methods, which rely on random input (such as from this bowl would not necessarily result in statistics to signify well-defined statistical properties.';
 
@@ -44,12 +45,20 @@ afterAll(() => {
 });
 
 test('Say hello?', async () => {
-  markovChain.addString(exmpleSentence);
+  markovChain.addString(exampleSentence);
   const ask = 'Hello';
   const newSentence = await markovChain.generateSentence(ask);
 
   expect(newSentence.text).toContain(ask);
 });
+
+test('Say hello from the middle', async () => {
+  markovChain.addString(exampleSentence);
+  const ask = 'this';
+  const newSentence = await markovChain.generateSentence(ask);
+
+  expect(newSentence.text).toContain(ask);
+})
 
 test('Find Sentence', async () => {
   TEST_INPUT.forEach(sentence => {
@@ -67,4 +76,11 @@ test('Reject bad strings', () => {
   markovChain.addString(42);
   expect(console.warn).toBeCalledWith(42, 'is a bad egg');
   expect(markovChain.chain).toEqual({});
+});
+
+test('Metadata', async () => {
+  markovChain.addString(exampleSentence, exampleMetadata);
+  const newSentence = await markovChain.generateSentence('Hello');
+
+  expect(newSentence.data[0].aBool).toEqual(exampleMetadata.aBool)
 });
