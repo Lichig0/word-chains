@@ -2,7 +2,7 @@
   "name": "markov-flexible",
   "version": "0.0.1",
   "description": "Flexible Markov Chains strings using a simple graph data structure",
-  "main": "index.js",
+  "main": "src/Markov.js",
   "scripts": {
     "test": "jest",
     "example": "node ./test/example.js"

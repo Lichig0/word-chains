@@ -56,17 +56,35 @@ console.log('Building chain....');
 getwiki().then(async content => {
   const sentences = contentToArray(content);
   sentences.forEach(sentence => {
-    mChain.addString(sentence, {source: 'Wiki', content});
+    mChain.addString(sentence, {source: 'Wiki', nsfw: true});
   })
   readline.question('Enter word to generate a sentence. \n>', async contains => {
     const start = Date.now();
-    const newWiki = await mChain.generateSentence(contains).catch(console.error);
+    const exampleFilter = (result) => {
+      /*
+      {
+        refs: {
+          'On 6 March 2020, a mass shooting occurred in Kabul, Afghanistan.': {
+            timestamp: 1678110023123,
+            source: 'Wiki',
+            nsfw: true,
+            id: 'On 6 March 2020, a mass shooting occurred in Kabul, Afghanistan.'
+          },
+          ...
+        text: 'On 6 March 2020, a ceremony to commemorate the 25th anniversary of the murder by Afghan politician Abdullah Abdullah, who escaped unharmed.'
+      }
+      */
+      console.log(Object.values(result.refs));
+      return result.text.split(' ').length >= 2
+    };
+    const newWiki = await mChain.generateSentence({intput: contains, filter: exampleFilter}).catch(console.error);
     console.debug(Date.now() - start);
     //Refs
     // console.debug(newWiki?.data.reduce((accum, curr) => [...accum, curr.refs], []));
     //Data
     // console.debug(newWiki?.data.reduce((accum, curr) => [...accum, curr.metadata], []));
     console.log(newWiki?.text);
+    console.log(newWiki);
     readline.close();
   });
 });
