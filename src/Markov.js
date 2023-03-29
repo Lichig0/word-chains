@@ -3,21 +3,30 @@ module.exports.MarkovChain = function() {
   this.startWords = {};
   this.endWords = {};
 
-  this.buildChain = function(words, metadata = {}) {
+  this.buildChain = function(words, metadata) {
+    //Inject timestamp to ID metadata
+    const timestamp = Date.now();
+    metadata = {
+      ...metadata,
+      mid: timestamp,
+    }
     // Iterate over the words and add each word to the chain
     for (let i = 0; i < words.length; i++) {
       const word = words[i];
-
+      if(word === '' || !word) {
+        // console.error(`Cannot index ${word}: `, word);
+        return;
+      }
       // If the word is not already in the chain, add it
       if (!this.chain[word]) {
         this.chain[word] = {
-          data: metadata,
           refs: {},
           nextWords: {},
           previousWords: {},
         };
       }
-      this.chain[word].refs[words.reduce((accumulator, currentWord) => accumulator + ' ' + currentWord)] = Date.now();
+
+      this.chain[word].refs[metadata.mid] = {timestamp, ...metadata};
       // If is a start word, and isn't already indexed as a start word
       if(i === 0 && !this.startWords[word]) {
         this.startWords[word] = this.chain[word];
@@ -43,12 +52,16 @@ module.exports.MarkovChain = function() {
   };
 
   this.addString = function(sentence, data) {
-    // This is bad- feeding this an array of arrays could go poorly.
     if(Array.isArray(sentence)) {
-      console.warn('DO NOT ACCEPT ARRAY ANYMORE');
-      // sentence.forEach(str => {
-      //   this.addString(str, data);
-      // });
+      sentence.forEach(str => {
+        if(typeof str === 'string') {
+          this.addString(str, data);
+        } else {
+          // Perhapse flatten incoming arrays?
+          console.warn('Do not feed Arrays of Arrays');
+          return;
+        }
+      });
     } else if(sentence === undefined || sentence === ' ' || sentence === '') {
       console.warn(sentence, 'not defined, skipping...');
       return;
@@ -57,8 +70,12 @@ module.exports.MarkovChain = function() {
         console.warn(sentence, 'is a bad egg');
         return;
       }
-      const words = sentence.split(' ');
-      this.buildChain(words, data);
+      const words = sentence.trim().split(' ');
+      if(!Array.isArray(words)) {
+        console.error(words, 'is not array');
+        return;
+      }
+      this.buildChain(words, { ...data, sentence: sentence });
     }
   }
 
@@ -74,14 +91,13 @@ module.exports.MarkovChain = function() {
     let {
       input,
       retries = 20,
-      filter = (sentence) => sentence.split(' ').length >= 2,
+      filter = (result) => result.text.split(' ').length >= 2,
       prng = Math.random,
     } = options;
 
     let sentence = '';
     for(let i = 0; i < retries; i++) {
       const sWords = Object.keys(this.startWords);
-      const meta = [];
       let referenced = {};
       sWords[Math.floor(prng()*sWords.length)];
       input = input ?? sWords[Math.floor(prng()*sWords.length)];
@@ -106,7 +122,6 @@ module.exports.MarkovChain = function() {
 
         // Set the current word to the next word
         currentWord = nextWord;
-        meta.push(this.chain[nextWord].data)
         referenced = {...referenced, ...this.chain[nextWord].refs};
       }
 
@@ -127,17 +142,17 @@ module.exports.MarkovChain = function() {
 
         // Set the current word to the previous word
         currentWord = previousWord;
-        meta.push(this.chain[previousWord].data)
         referenced = {...referenced, ...this.chain[previousWord].refs};
       }
+      const result = {
+        refs: referenced,
+        text: sentence,
+        string: sentence,
+      }
       // Check if the sentence passes the filter
-      if(filter(sentence)) {
+      if(filter(result)) {
         // Resolve and return sentence
-        resolve({
-          refs: referenced,
-          data: meta,
-          text: sentence
-        });
+        resolve(result);
         break;
       }
     }
