@@ -4,7 +4,7 @@ let markovChain;
 const exampleSentence = 'Hello world this is a string with metadata!';
 const exampleMetadata = { tag: 12345, aBool: true}
 const staticPrng = () => 0.69;
-const staticResponse = 'By analogy, quasi-Monte Carlo methods, which rely on random input (such as from this bowl would not necessarily result in statistics to signify well-defined statistical properties.';
+const staticResponse = "A random sequence of 7 will tend to occur twice as often has no order and 9 blue."
 
 const TEST_INPUT = [
   'In common usage, randomness is the apparent or actual lack of pattern or predictability in events.',

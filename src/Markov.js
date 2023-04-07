@@ -22,11 +22,13 @@ module.exports.MarkovChain = function() {
         this.chain[word] = {
           refs: {},
           nextWords: {},
+          nw: 0,
           previousWords: {},
+          pw: 0,
         };
       }
 
-      this.chain[word].refs[metadata.mid] = {timestamp, ...metadata};
+      this.chain[word].refs[timestamp] = {timestamp, ...metadata};
       // If is a start word, and isn't already indexed as a start word
       if(i === 0 && !this.startWords[word]) {
         this.startWords[word] = this.chain[word];
@@ -41,12 +43,14 @@ module.exports.MarkovChain = function() {
       if (i < words.length - 1) {
         const nextWord = words[i + 1];
         this.chain[word].nextWords[nextWord] = (this.chain[word].nextWords[nextWord] || 0) + 1;
+        this.chain[word].nw++;
       }
 
       //If there is a previous word, add it to the list of previous words for the current word
       if (i > 0) {
         const previousWord = words[i-1];
         this.chain[word].previousWords[previousWord] = (this.chain[word].previousWords[previousWord] || 0) + 1;
+        this.chain[word].pw++;
       }
     }
   };
@@ -167,15 +171,24 @@ module.exports.MarkovChain = function() {
     const nextWords = this.chain[word].nextWords;
 
     // If there are no next words, return null
-    if (Object.keys(nextWords).length === 0) {
+    if (nextWords === {}) {
       return null;
     }
 
-    // Choose a random index from the list of next words
-    const nextWordIndex = Math.floor(prng() * Object.keys(nextWords).length);
+    // Choose the next word based on it's weight.
+    const select = prng() * this.chain[word].nw;
+    let accumulate = -1;
+    let picked = null;
+    for( const word in nextWords ) {
+      accumulate += nextWords[word];
+      if(accumulate <= select) {
+        picked = word;
+        break;
+      }
+    }
+    // Return the next word picked.
+    return picked;
 
-    // Return the next word at the chosen index
-    return Object.keys(nextWords)[nextWordIndex];
   };
 
   // A helper function that chooses a random previous word form the list of previous words for a given word
@@ -183,15 +196,23 @@ module.exports.MarkovChain = function() {
     // Get the list of previous words for the given word
     const previousWords = this.chain[word].previousWords;
     // If there are no previous words, return null
-    if (Object.keys(previousWords).length === 0) {
+    if (previousWords === {}) {
       return null;
     }
 
-    // Choose a random index from the list of previous words
-    const previousWordIndex = Math.floor(prng() * Object.keys(previousWords).length);
-
-    // Return the previous word at the chosen index
-    return Object.keys(previousWords)[previousWordIndex];
+     // Choose the next word based on it's weight.
+     const select = prng() * this.chain[word].pw;
+     let accumulate = -1;
+     let picked = null;
+     for( const word in previousWords ) {
+       accumulate += previousWords[word];
+       if(accumulate <= select) {
+         picked = word;
+         break;
+       }
+     }
+     // Return the previous word picked.
+     return picked;
   }
 };
 
