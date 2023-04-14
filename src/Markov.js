@@ -1,4 +1,5 @@
-module.exports.MarkovChain = function() {
+module.exports.MarkovChain = function(size = 1) {
+  this.stateSize = size;
   this.chain = {};
   this.startWords = {};
   this.endWords = {};
@@ -11,14 +12,14 @@ module.exports.MarkovChain = function() {
       mid: timestamp,
     }
     // Iterate over the words and add each word to the chain
-    for (let i = 0; i < words.length; i++) {
-      const word = words[i];
+    for (let i = 0; i < words.length-(this.stateSize-1); i++) {
+      const word = words.slice(i,i+this.stateSize).join(" ");
       if(word === '' || !word) {
         // console.error(`Cannot index ${word}: `, word);
         return;
       }
       // If the word is not already in the chain, add it
-      if (!this.chain[word]) {
+      if (!this.chain[word]?.refs) {
         this.chain[word] = {
           refs: {},
           nextWords: {},
@@ -35,20 +36,20 @@ module.exports.MarkovChain = function() {
       }
 
       // If is an end word, and isn't already indexed as an end word
-      if(i == (words.length - 1) && !this.endWords[word]) {
+      if(i == (words.length - (this.stateSize-1)) && !this.endWords[word]) {
         this.endWords[word] = this.chain[word];
       }
 
       // If there is a next word, add it to the list of next words for the current word
-      if (i < words.length - 1) {
-        const nextWord = words[i + 1];
+      if (i < words.length - (this.stateSize-1)) {
+        const nextWord = words.slice(i+1,i+this.stateSize+1).join(" ");
         this.chain[word].nextWords[nextWord] = (this.chain[word].nextWords[nextWord] || 0) + 1;
         this.chain[word].nw++;
       }
 
       //If there is a previous word, add it to the list of previous words for the current word
       if (i > 0) {
-        const previousWord = words[i-1];
+        const previousWord = words.slice(i-1,i-1+this.stateSize).join(" ");
         this.chain[word].previousWords[previousWord] = (this.chain[word].previousWords[previousWord] || 0) + 1;
         this.chain[word].pw++;
       }
@@ -100,19 +101,34 @@ module.exports.MarkovChain = function() {
     } = options;
 
     let sentence = '';
+    const inputStates = [];
+    input?.split(' ').forEach((inWord, index, array) => {
+      inputStates.push(array.slice(index, index + this.stateSize).join(" "));
+    })
+    input = inputStates.some(inputState => this.chain[inputState] !== undefined) ? input : undefined;
+
+    console.debug('Generating', `input: ${input}`)
+
     for(let i = 0; i < retries; i++) {
       const sWords = Object.keys(this.startWords);
       let referenced = {};
-      sWords[Math.floor(prng()*sWords.length)];
+      // sWords[Math.floor(prng()*sWords.length)];
       input = input ?? sWords[Math.floor(prng()*sWords.length)];
       // Start the sentence with the starting word
-      sentence = input;
+      sentence = this.startWords[input] ? input.split(' ').shift() : input;
 
       // Set the current word to the starting word
       let currentWord = input;
 
+      let initTime = Date.now()
       // Keep generating words until we reach the end of the chain
-      while (currentWord && this.chain[currentWord]) {
+      while (currentWord && this.chain[currentWord] && !this.endWords[currentWord]) {
+        if(Date.now() - initTime > 6000) {
+          console.warn('Markov took too long.', sentence, currentWord);
+          currentWord = sWords[Math.floor(prng()*sWords.length)];
+          sentence = input = currentWord;
+          break;
+        }
         // Choose a random next word from the list of next words for the current word
         const nextWord = this.chooseRandomNextWord(currentWord, prng);
         // console.log(this.chain[nextWord]);
@@ -122,17 +138,27 @@ module.exports.MarkovChain = function() {
         }
 
         // Add the next word to the sentence
-        sentence += ' ' + nextWord;
+        sentence += ' ' + nextWord.split(' ').shift();
 
         // Set the current word to the next word
         currentWord = nextWord;
-        referenced = {...referenced, ...this.chain[nextWord].refs};
+        referenced = {...referenced, ...this.chain[nextWord]?.refs};
       }
 
       // Return to the seed word
       currentWord = input;
+
+      initTime = Date.now();
       // Keep generating words until we reach the start of the chain
-      while (currentWord && this.chain[currentWord]) {
+      while (currentWord && this.chain[currentWord] && !this.startWords[currentWord]) {
+        // Stop if taking too long
+        if(Date.now() - initTime > 6000) {
+          console.warn('Markov took too long. Reset:', sentence, currentWord);
+          currentWord = sWords[Math.floor(prng()*sWords.length)]
+          sentence = input = currentWord
+          break;
+        }
+
         // Choose a random previous word from the list of previous words for the current word
         const previousWord = this.chooseRandomPreviousWord(currentWord, prng);
 
@@ -142,11 +168,11 @@ module.exports.MarkovChain = function() {
         }
 
         // Prenpend to previous word to the sentence
-        sentence = previousWord + ' ' + sentence;
+        sentence = previousWord.slice(' ').pop() + ' ' + sentence;
 
         // Set the current word to the previous word
         currentWord = previousWord;
-        referenced = {...referenced, ...this.chain[previousWord].refs};
+        referenced = {...referenced, ...this.chain[previousWord]?.refs};
       }
       const result = {
         refs: referenced,
@@ -171,18 +197,21 @@ module.exports.MarkovChain = function() {
     const nextWords = this.chain[word].nextWords;
 
     // If there are no next words, return null
-    if (nextWords === {}) {
+    if (Object.keys(nextWords).length === 0 || this.endWords[word] !== undefined) {
       return null;
     }
 
+    // Choose a random index from the list of next words
+    const nextWordIndex = Math.floor(prng() * Object.keys(nextWords).length);
+
     // Choose the next word based on it's weight.
-    const select = prng() * this.chain[word].nw;
-    let accumulate = -1;
-    let picked = null;
-    for( const word in nextWords ) {
-      accumulate += nextWords[word];
-      if(accumulate <= select) {
-        picked = word;
+    const select = prng() * this.chain[word].nw + 1;
+    let accumulate = this.chain[word].nw;
+    let picked = Object.keys(nextWords)[nextWordIndex];
+    for( const next in nextWords ) {
+      accumulate -= nextWords[next];
+      if(accumulate <= select && next !== word) {
+        picked = next;
         break;
       }
     }
@@ -196,18 +225,23 @@ module.exports.MarkovChain = function() {
     // Get the list of previous words for the given word
     const previousWords = this.chain[word].previousWords;
     // If there are no previous words, return null
-    if (previousWords === {}) {
+    if (Object.keys(previousWords).length === 0 || this.startWords[word] !== undefined) {
       return null;
     }
 
+    // Choose a random index from the list of previous words
+    const previousWordIndex = Math.floor(prng() * Object.keys(previousWords).length);
+
+    // Return the previous word at the chosen index
+
      // Choose the next word based on it's weight.
-     const select = prng() * this.chain[word].pw;
-     let accumulate = -1;
-     let picked = null;
-     for( const word in previousWords ) {
-       accumulate += previousWords[word];
-       if(accumulate <= select) {
-         picked = word;
+     const select = prng() * this.chain[word].pw + 1;
+     let accumulate = this.chain[word].pw;
+     let picked = Object.keys(previousWords)[previousWordIndex];
+     for( const previous in previousWords ) {
+       accumulate += previousWords[previous];
+       if(accumulate <= select && previous !== word) {
+         picked = previous;
          break;
        }
      }
