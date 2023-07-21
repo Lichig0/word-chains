@@ -4,7 +4,8 @@ let markovChain;
 const exampleSentence = 'Hello world this is a string with metadata!';
 const exampleMetadata = { tag: 12345, aBool: true}
 const staticPrng = () => 0.69;
-const staticResponse = "By analogy, quasi-Monte Carlo methods, which rely on random sequence of 7 will tend to occur twice as often has no order and 9 blue."
+// const staticResponse = "By analogy, quasi-Monte Carlo methods, which rely on random sequence of 7 will tend to occur twice as often has no order and 9 blue."
+const difficultFilter = (result) => result.text.split(' ').length >= 2 && result.text.split(' ').length <= 30;
 
 
 const TEST_INPUT = [
@@ -45,6 +46,7 @@ afterEach(() => {
 
 beforeAll(() => {
   jest.spyOn(console, 'warn').mockImplementation();
+  jest.spyOn(Math, 'random').mockImplementation(staticPrng);
 });
 
 afterAll(() => {
@@ -71,7 +73,7 @@ test('Find Sentence', async () => {
   TEST_INPUT.forEach(sentence => {
     markovChain.addString(sentence);
   });
-  const newSentence = await markovChain.generateSentence({input: 'random', prng: staticPrng})
+  const newSentence = await markovChain.generateSentence({input: 'random'})
   expect(newSentence.text).toContain('random');
   // expect(newSentence.text).toContain(staticResponse);
 });
@@ -79,9 +81,17 @@ test('Find Sentence', async () => {
 test('Accept Arrays', async () => {
   markovChain.addString(TEST_INPUT);
 
-  const newSentence = await markovChain.generateSentence({input: 'random', prng: staticPrng})
+  const newSentence = await markovChain.generateSentence({input: 'random'})
   expect(newSentence.text).toContain('random');
   // expect(newSentence.text).toContain(staticResponse);
+});
+
+
+test('Difficult filter', async () => {
+  markovChain.addString(TEST_INPUT);
+
+  const newSentence = await markovChain.generateSentence({input: 'outcomes', filter: difficultFilter});
+  expect(newSentence.text).toContain('outcomes');
 });
 
 test('Reject bad strings', () => {
@@ -110,4 +120,6 @@ test('Fear loops', async () => {
 
   const newSentence = await markovChain.generateSentence('1');
   expect(newSentence.text).toContain('1');
+  const newSentence2 = await markovChain.generateSentence('loop');
+  expect(newSentence2.text).toContain('loop');
 });
