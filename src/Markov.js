@@ -154,7 +154,7 @@ module.exports.MarkovChain = function(size = 1) {
 
   const _createEndChainWorker = (corpus, word) => {
     return new Promise((resolve, reject) => {
-      const endChainWorker = new Worker('./src/Workers.js', {
+      const endChainWorker = new Worker(`${__dirname}/Workers.js`, {
         workerData: {
           corpus,
           job: JOBS.CHOOSE_RANDOM_NEXT_WORD,
@@ -170,7 +170,7 @@ module.exports.MarkovChain = function(size = 1) {
 
   const _createStartChainWorker = (corpus, word) => {
     return new Promise((resolve, reject) => {
-      const endChainWorker = new Worker('./src/Workers.js', {
+      const endChainWorker = new Worker(`${__dirname}/Workers.js`, {
         workerData: {
           corpus,
           job: JOBS.CHOOSE_RANDOM_PREV_WORD,
