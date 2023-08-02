@@ -18,6 +18,7 @@ const _findChainEnd = (corpus, word) => {
     let initTime = Date.now();
     let currentWord = word;
     let sentence = '';
+    const pickedWords = new Set();
 
     // Keep generating words until we reach the end of the chain
     while (currentWord && chain.has(currentWord) && !endWords.has(currentWord)) {
@@ -30,15 +31,20 @@ const _findChainEnd = (corpus, word) => {
         }
         // Choose a random next word from the list of next words for the current word
         const nextWord = _chooseRandomNextWord(corpus, currentWord);
-        // console.log(this.chain[nextWord]);
+        
         // If we couldn't choose a next word, break out of the loop
         if (!nextWord || ((sentence + sentence).indexOf(sentence, 1) != sentence.length)) {
+            break;
+        }
+
+        if(pickedWords.size > 0 && sentence.split(' ').length > (pickedWords.size * 2)) {
             break;
         }
 
         // Add the next word to the sentence
         sentence += ' ' + nextWord.split(' ').shift();
 
+        pickedWords.add(nextWord);
         // Set the current word to the next word
         currentWord = nextWord;
         referenced = { ...referenced, ...chain.get(nextWord)?.refs };
@@ -87,6 +93,8 @@ const _findChainStart = (corpus, word) => {
     let initTime = Date.now();
     let currentWord = word;
     let sentence = '';
+    const pickedWords = new Set();
+
     while (currentWord && chain.has(currentWord) && !startWords.has(currentWord)) {
         // Stop if taking too long
         if (Date.now() - initTime > 6000) {
@@ -105,9 +113,14 @@ const _findChainStart = (corpus, word) => {
             break;
         }
 
+        if (pickedWords.size > 0 && sentence.split(' ').length > (pickedWords.size * 2)) {
+            break;
+        }
+
         // Prenpend to previous word to the sentence
         sentence = previousWord.split(' ').pop() + ' ' + sentence;
 
+        pickedWords.add(previousWord);
         // Set the current word to the previous word
         currentWord = previousWord;
         referenced = { ...referenced, ...chain.get(previousWord)?.refs };
