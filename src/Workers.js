@@ -13,7 +13,7 @@ const _generateStentnce = async (corpus, options) => {
 }
 
 const _findChainEnd = (corpus, word) => {
-    const { chain, startWords, endWords } = corpus;
+    const { chain, endWords } = corpus;
     let referenced = {};
     let initTime = Date.now();
     let currentWord = word;
@@ -22,10 +22,10 @@ const _findChainEnd = (corpus, word) => {
     // Keep generating words until we reach the end of the chain
     while (currentWord && chain.has(currentWord) && !endWords.has(currentWord)) {
         if (Date.now() - initTime > 6000) {
-            const sWords = Array.from(startWords.keys());
+            const eWords = Array.from(endWords.keys());
             console.warn('Markov took too long.', sentence, currentWord);
-            currentWord = sWords[Math.floor(Math.random() * sWords.length)];
-            sentence = currentWord;
+            currentWord = eWords[Math.floor(Math.random() * eWords.length)];
+            sentence = ` ${currentWord}`;
             break;
         }
         // Choose a random next word from the list of next words for the current word
@@ -92,8 +92,8 @@ const _findChainStart = (corpus, word) => {
         if (Date.now() - initTime > 6000) {
             const sWords = Array.from(startWords.keys());
             console.warn('Markov took too long. Reset:', sentence, currentWord);
-            currentWord = sWords[Math.floor(Math.random() * sWords.length)]
-            sentence = currentWord
+            currentWord = sWords[Math.floor(Math.random() * sWords.length)];
+            sentence = currentWord;
             break;
         }
 
