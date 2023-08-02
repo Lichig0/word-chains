@@ -135,7 +135,7 @@ module.exports.MarkovChain = function(size = 1) {
       ];
 
       const [startChain, endChain] = await Promise.all(chainWorkers)
-      sentence = `${startChain.sentence}${input}${endChain.sentence}`;
+      sentence = `${startChain.sentence ? startChain.sentence : '...'}${input}${endChain.sentence ? endChain.sentence : '...'}`;
       referenced = {...startChain.referenced, ...endChain.referenced};
 
       const result = {
@@ -182,69 +182,6 @@ module.exports.MarkovChain = function(size = 1) {
       endChainWorker.on('message', resolve);
       endChainWorker.on('messageerror', reject);
     });
-  }
-
-  // A helper function that chooses a random next word from the list of next words for a given word
-  this.chooseRandomNextWord = function(word) {
-    // Get the list of next words for the given word
-    const nextWords = this.chain.get(word).nextWords;
-
-    // If there are no next words, return null
-    if (nextWords.size === 0 || this.endWords.has(word)) {
-      return null;
-    }
-
-    // Choose a random index from the list of next words
-    const nextWordIndex = Math.floor(Math.random() * nextWords.size);
-
-    // Choose the next word based on it's weight.
-    const select = Math.random() * this.chain.get(word).nw + 1;
-    let accumulate = this.chain.get(word).nw;
-    let picked = Array.from(nextWords.keys())[nextWordIndex];
-    for( const next of nextWords.keys() ) {
-      accumulate -= nextWords.get(next);
-      const inAfterWords = Object.values(this.chain.get(word).refs).some((reference) => {
-        word.split(' ').some(w => {
-          return reference?.afterWords?.includes(w);
-        })
-      });
-      if(accumulate <= select && next !== word || inAfterWords) {
-        picked = next;
-        break;
-      }
-    }
-    // Return the next word picked.
-    return picked;
-
-  };
-
-  // A helper function that chooses a random previous word form the list of previous words for a given word
-  this.chooseRandomPreviousWord = function(word) {
-    // Get the list of previous words for the given word
-    const previousWords = this.chain.get(word).previousWords;
-    // If there are no previous words, return null
-    if (previousWords.size === 0 || this.startWords.has(word)) {
-      return null;
-    }
-
-    // Choose a random index from the list of previous words
-    const previousWordIndex = Math.floor(Math.random() * previousWords.size);
-
-    // Return the previous word at the chosen index
-
-     // Choose the next word based on it's weight.
-     const select = Math.random() * this.chain.get(word).pw + 1;
-     let accumulate = this.chain.get(word).pw;
-     let picked = Array.from(previousWords.keys())[previousWordIndex];
-     for( const previous of previousWords.keys() ) {
-       accumulate += previousWords.get(previous);
-       if(accumulate <= select && previous !== word) {
-         picked = previous;
-         break;
-       }
-     }
-     // Return the previous word picked.
-     return picked;
   }
 }
 
