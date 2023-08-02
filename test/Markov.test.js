@@ -33,7 +33,7 @@ const TEST_INPUT = [
 const LOOP_INPUT = [
   'This input is forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loopforever in a loop forever in a loop.',
   'Does this sentence loop forever loop forever loop forever loop forever loop forever  loop forever loop forever loop forever loop forever loop forever loop forever loop forever loop forever loop forever loop forever loop forever loop forever loop forever loop forever loop forever loop forever loop forever loop forever loop forever loop forever loop forever loop forever loop forever loop forever loop forever loop forever loop forever loop forever loop forever loop forever loop forever loop forever loop forever loop forever loop forever loop forever loop forever loop forever loop forever loop forever loop forever loop forever',
-  '... 1 ...'
+  '... 1 ... 2 ... 3 ... 1 ... 2 ... 3 ... 2 ... 3 ... 2 ... 1 ... 2 ... 3 ... 2 ... 3 ... 1 ...'
 ]
 
 beforeEach(() => {
