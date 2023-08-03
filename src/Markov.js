@@ -7,7 +7,7 @@ const JOBS = {
 };
 
 module.exports.MarkovChain = function(size = 1) {
-  this.stateSize = size;
+  this.stateSize = 1; // bigger state sizes are broken
   this.chain = new Map();
   this.startWords = new Map();
   this.endWords = new Map();
@@ -116,26 +116,25 @@ module.exports.MarkovChain = function(size = 1) {
     input?.split(' ').forEach((inWord, index, array) => {
       inputStates.push(array.slice(index, index + this.stateSize).join(" "));
     })
-    input = inputStates.some(inputState => this.chain.has(inputState)) ? input : undefined;
+    input = inputStates.find(inputState => this.chain.has(inputState))
 
     console.debug('Generating', `input: ${input}`)
 
     for(let i = 0; i < retries; i++) {
       const sWords = Array.from(this.startWords.keys());
       let referenced = {};
-      // sWords[Math.floor(Math.random()*sWords.length)];
+
       input = input ?? sWords[Math.floor(Math.random()*sWords.length)];
       // Start the sentence with the starting word
-      sentence = this.startWords.get(input) ? input.split(' ').shift() : input;
+      // sentence = this.startWords.get(input) ? input.split(' ').shift() : input;
 
-      // Set the current word to the starting word
       const chainWorkers = [
         _createStartChainWorker(this.corpus, input),
         _createEndChainWorker(this.corpus, input)
       ];
 
       const [startChain, endChain] = await Promise.all(chainWorkers)
-      sentence = `${startChain.sentence ? startChain.sentence : ''}${input}${endChain.sentence ? endChain.sentence : '...'}`;
+      sentence = `${startChain.sentence ? startChain.sentence : ''}${input}${endChain.sentence ? endChain.sentence : ''}`;
       referenced = {...startChain.referenced, ...endChain.referenced};
 
       const result = {
