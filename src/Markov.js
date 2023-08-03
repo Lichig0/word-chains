@@ -135,7 +135,7 @@ module.exports.MarkovChain = function(size = 1) {
       ];
 
       const [startChain, endChain] = await Promise.all(chainWorkers)
-      sentence = `${startChain.sentence ? startChain.sentence : '...'}${input}${endChain.sentence ? endChain.sentence : '...'}`;
+      sentence = `${startChain.sentence ? startChain.sentence : ''}${input}${endChain.sentence ? endChain.sentence : '...'}`;
       referenced = {...startChain.referenced, ...endChain.referenced};
 
       const result = {
