@@ -24,8 +24,8 @@ const _findChainEnd = (corpus, word) => {
     while (currentWord && chain.has(currentWord) && !endWords.has(currentWord)) {
         if (Date.now() - initTime > 6000) {
             const eWords = Array.from(endWords.keys());
-            console.warn('Markov took too long.', sentence, currentWord);
             currentWord = eWords[Math.floor(Math.random() * eWords.length)];
+            console.warn(`Markov took too long("${sentence}"). Forcing: " ${currentWord}"`);
             sentence = ` ${currentWord}`;
             break;
         }
@@ -99,9 +99,9 @@ const _findChainStart = (corpus, word) => {
         // Stop if taking too long
         if (Date.now() - initTime > 6000) {
             const sWords = Array.from(startWords.keys());
-            console.warn('Markov took too long. Reset:', sentence, currentWord);
             currentWord = sWords[Math.floor(Math.random() * sWords.length)];
-            sentence = currentWord;
+            console.warn(`Markov took too long("${sentence}"). Forcing: "${currentWord} "`);
+            sentence = `${currentWord} `;
             break;
         }
 
