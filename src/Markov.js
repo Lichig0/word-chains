@@ -49,7 +49,7 @@ module.exports.MarkovChain = function(size = 1) {
       }
 
       // If is an end word, and isn't already indexed as an end word
-      if(i == (words.length - (this.stateSize-1)) && !this.endWords.has(word)) {
+      if(i == (words.length - (this.stateSize)) && !this.endWords.has(word)) {
         this.endWords.set(word, this.chain.get(word));
       }
 
@@ -134,7 +134,7 @@ module.exports.MarkovChain = function(size = 1) {
       ];
 
       const [startChain, endChain] = await Promise.all(chainWorkers)
-      sentence = `${startChain.sentence ? startChain.sentence : ''}${input}${endChain.sentence ? endChain.sentence : ''}`;
+      sentence = `${startChain.sentence ? startChain.sentence.trim() : ''}${this.stateSize > 1 ? ' ' : ` ${input} `}${endChain.sentence ? endChain.sentence.trim() : ''}`;
       referenced = {...startChain.referenced, ...endChain.referenced};
 
       const result = {
