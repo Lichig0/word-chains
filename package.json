@@ -4,7 +4,7 @@
   "description": "Flexible Markov Chains strings using a simple graph data structure",
   "main": "src/Markov.js",
   "scripts": {
-    "test": "jest",
+    "test": "npm run jest",
     "example": "node ./test/example.js",
     "lint": "eslint"
   },

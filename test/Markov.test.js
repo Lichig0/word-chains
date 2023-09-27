@@ -1,6 +1,7 @@
 const Markov = require('../src/Markov');
 
 let markovChain;
+const outputs = [];
 const exampleSentence = 'Hello world this is a string with metadata!';
 const exampleMetadata = { tag: 12345, aBool: true}
 const staticPrng = () => 0.69;
@@ -51,12 +52,14 @@ beforeAll(() => {
 
 afterAll(() => {
   jest.restoreAllMocks();
+  console.log(outputs);
 });
 
 test('Say hello?', async () => {
   markovChain.addString(exampleSentence);
   const ask = 'Hello';
   const newSentence = await markovChain.generateSentence(ask);
+  outputs.push(newSentence.text);
 
   expect(newSentence.text).toContain(ask);
 });
@@ -66,6 +69,7 @@ test('Say hello from the middle', async () => {
   const ask = 'this';
   const newSentence = await markovChain.generateSentence(ask);
 
+  outputs.push(newSentence.text);
   expect(newSentence.text).toContain(ask);
 });
 
@@ -74,6 +78,7 @@ test('Find Sentence', async () => {
     markovChain.addString(sentence);
   });
   const newSentence = await markovChain.generateSentence({input: 'random'})
+  outputs.push(newSentence.text);
   expect(newSentence.text).toContain('random');
   // expect(newSentence.text).toContain(staticResponse);
 });
@@ -82,15 +87,24 @@ test('Accept Arrays', async () => {
   markovChain.addString(TEST_INPUT);
 
   const newSentence = await markovChain.generateSentence({input: 'random'})
+  outputs.push(newSentence.text);
   expect(newSentence.text).toContain('random');
   // expect(newSentence.text).toContain(staticResponse);
 });
 
+test('Generate from no input', async () => {
+  markovChain.addString(TEST_INPUT);
+
+  const newSentence = await markovChain.generateSentence();
+  outputs.push(newSentence.text);
+  expect(newSentence.text).not.toContain('undefined');
+});
 
 test('Difficult filter', async () => {
   markovChain.addString(TEST_INPUT);
 
   const newSentence = await markovChain.generateSentence({input: 'outcomes', filter: difficultFilter});
+  outputs.push(newSentence.text);
   expect(newSentence.text).toContain('outcomes');
 });
 
@@ -111,6 +125,7 @@ test('Metadata', async () => {
   markovChain.addString(exampleSentence, exampleMetadata);
   const newSentence = await markovChain.generateSentence('Hello');
 
+  outputs.push(newSentence.text);
   expect(Object.values(newSentence.refs)[0].aBool).toEqual(exampleMetadata.aBool)
   expect(Object.values(newSentence.refs)[0].tag).toEqual(exampleMetadata.tag);
 });
@@ -119,7 +134,9 @@ test('Fear loops', async () => {
   markovChain.addString(LOOP_INPUT);
 
   const newSentence = await markovChain.generateSentence('1');
+  outputs.push(newSentence.text);
   expect(newSentence.text).toContain('1');
   const newSentence2 = await markovChain.generateSentence('loop');
+  outputs.push(newSentence2.text);
   expect(newSentence2.text).toContain('loop');
 });
