@@ -1,7 +1,7 @@
 {
-  "name": "markov-flexible",
-  "version": "0.0.1",
-  "description": "Flexible Markov Chains strings using a simple graph data structure",
+  "name": "word-chains",
+  "version": "0.0.4",
+  "description": "Flexible Markov-like Chains strings using a simple graph data structure",
   "main": "src/Markov.js",
   "scripts": {
     "test": "npm run jest",
@@ -10,6 +10,7 @@
   },
   "keywords": [
     "markov",
+    "word",
     "chain",
     "chains",
     "graph"
