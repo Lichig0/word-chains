@@ -74,13 +74,15 @@ module.exports.MarkovChain = function(size = 1) {
       sentence.forEach( (str, index, arr) => {
         if(typeof str === 'string') {
           this.addString(str, data, arr[index+1]);
-        } else {
+        } else if(Array.isArray(str)) {
           // Perhapse flatten incoming arrays?
           console.warn('Do not feed Arrays of Arrays');
           return;
+        } else {
+          console.warn(`${str}(${typeof str}) is not supported`);
         }
       });
-    } else if(sentence === undefined || sentence === ' ' || sentence === '') {
+    } else if(sentence === undefined || sentence === ' ' || sentence === '' || sentence === null) {
       console.warn(sentence, 'not defined, skipping...');
       return;
     } else if (sentence) {
