@@ -83,7 +83,6 @@ module.exports.MarkovChain = function(size = 1) {
         }
       });
     } else if(sentence === undefined || sentence === ' ' || sentence === '' || sentence === null) {
-      console.warn(sentence, 'not defined, skipping...');
       return;
     } else if (sentence) {
       if(!sentence.split) {
