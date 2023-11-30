@@ -6,7 +6,7 @@ const exampleSentence = 'Hello world this is a string with metadata!';
 const exampleMetadata = { tag: 12345, aBool: true}
 const staticPrng = () => 0.69;
 // const staticResponse = "By analogy, quasi-Monte Carlo methods, which rely on random sequence of 7 will tend to occur twice as often has no order and 9 blue."
-const difficultFilter = (result) => result.text.split(' ').length >= 2 && result.text.split(' ').length <= 30;
+const difficultFilter = (result) => result.text.trim().split(' ').length >= 2 && result.text.split(' ').length <= 30;
 
 
 const TEST_INPUT = [
@@ -16,7 +16,7 @@ const TEST_INPUT = [
   'For example, when throwing two dice, the outcome of any particular roll is unpredictable, but a sum of 7 will tend to occur twice as often as 4!',
   'In this view, randomness is not haphazardness; it is a measure of uncertainty of an outcome.',
   'Randomness applies to concepts of chance, probability, and information entropy.',
-  'The fields of mathematics, probability, and statistics use formal definitions of randomness!p',
+  'The fields of mathematics, probability, and statistics use formal definitions of randomness!',
   'In statistics, a random variable is an assignment of a numerical value to each possible outcome of an event space.',
   'This association facilitates the identification and the calculation of probabilities of the events.',
   'Random variables can appear in random sequences.',
@@ -29,7 +29,8 @@ const TEST_INPUT = [
   'For example, with a bowl containing just 10 red marbles and 90 blue marbles, a random selection mechanism would choose a red marble with probability 1/10.',
   'Note that a random selection mechanism that selected 10 marbles from this bowl would not necessarily result in 1 red and 9 blue.',
   'In situations where a population consists of items that are distinguishable, a random selection mechanism requires equal probabilities for any item to be chosen.',
-  'That is, if the selection process is such that each member of a population, say research subjects, has the same probability of being chosen, then we can say the selection process is random.'
+  'That is, if the selection process is such that each member of a population, say research subjects, has the same probability of being chosen, then we can say the selection process is random.',
+  'uncertainty'
 ]
 const LOOP_INPUT = [
   'This input is forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loop forever in a loopforever in a loop forever in a loop.',
@@ -110,7 +111,7 @@ test('Difficult filter', async () => {
 
 test('Reject bad strings', () => {
   markovChain.addString('');
-  expect(console.warn).toBeCalledWith('', 'not defined, skipping...');
+  expect(markovChain.chain.size).toEqual(2);
   markovChain.addString([['asdf'],['asdf']]);
   expect(console.warn).toBeCalledWith('Do not feed Arrays of Arrays');
   markovChain.addString(42);
@@ -118,7 +119,7 @@ test('Reject bad strings', () => {
   markovChain.addString({});
   expect(console.warn).toBeCalledWith({}, 'is a bad egg');
   markovChain.addString([{}, ' ']);
-  expect(markovChain.chain.size).toEqual(0);
+  expect(markovChain.chain.size).toEqual(2);
 });
 
 test('Metadata', async () => {
@@ -140,3 +141,11 @@ test('Fear loops', async () => {
   outputs.push(newSentence2.text);
   expect(newSentence2.text).toContain('loop');
 });
+
+test('Single word', async () => {
+  markovChain.addString(TEST_INPUT);
+  const newSentence = await markovChain.generateSentence({input: 'uncertainty', filter: difficultFilter});
+  // const newSentence = await markovChain.generateSentence('uncertainty');
+  outputs.push(newSentence.text);
+  expect(newSentence.text).toContain('uncertainty')
+})
