@@ -6,6 +6,9 @@ const JOBS = {
     CHOOSE_RANDOM_NEXT_WORD: 'find_rand_next_word',
 };
 
+const __END__ = 1;
+const __START__ = 0;
+
 const _generateStentnce = async (corpus, options) => {
     return new Promise((resolve, reject) => {
         reject('NOT IMPLEMENTED', corpus, options);
@@ -21,7 +24,7 @@ const _findChainEnd = (corpus, word) => {
     const pickedWords = new Set();
 
     // Keep generating words until we reach the end of the chain
-    while (currentWord && chain.has(currentWord) && !endWords.has(currentWord)) {
+    while (currentWord && chain.has(currentWord) && currentWord !== 1) {
         if (Date.now() - initTime > 6000) {
             const eWords = Array.from(endWords.keys());
             currentWord = eWords[Math.floor(Math.random() * eWords.length)];
@@ -59,7 +62,7 @@ const _chooseRandomNextWord = (corpus, word) => {
     const nextWords = chain.get(word).nextWords;
 
     // If there are no next words, return null
-    if (nextWords.size === 0 || endWords.has(word)) {
+    if (nextWords.size === 0) {
         return null;
     }
 
@@ -95,7 +98,7 @@ const _findChainStart = (corpus, word) => {
     let sentence = '';
     const pickedWords = new Set();
 
-    while (currentWord && chain.has(currentWord) && !startWords.has(currentWord)) {
+    while (currentWord && chain.has(currentWord) && currentWord !== 0) {
         // Stop if taking too long
         if (Date.now() - initTime > 6000) {
             const sWords = Array.from(startWords.keys());
@@ -134,7 +137,7 @@ const _chooseRandomPreviousWord = function (corpus, word) {
     // Get the list of previous words for the given word
     const previousWords = chain.get(word).previousWords;
     // If there are no previous words, return null
-    if (previousWords.size === 0 || startWords.has(word)) {
+    if (previousWords.size === 0) {
         return null;
     }
 

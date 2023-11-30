@@ -6,6 +6,9 @@ const JOBS = {
   CHOOSE_RANDOM_NEXT_WORD: 'find_rand_next_word',
 };
 
+const __END__ = 1;
+const __START__ = 0;
+
 module.exports.MarkovChain = function(size = 1) {
   this.stateSize = 1; // bigger state sizes are broken
   this.chain = new Map();
@@ -16,6 +19,20 @@ module.exports.MarkovChain = function(size = 1) {
     startWords: this.startWords,
     endWords: this.endWords
   };
+
+  // Add start and end symbols to the chian
+  this.chain.set(__START__, {
+      previousWords: new Map(),
+      nextWords: new Map(),
+      nw: 0,
+      pw: 0,
+  });
+  this.chain.set(__END__, {
+    previousWords: new Map(),
+    nextWords: new Map(),
+    nw: 0,
+    pw: 0,
+  });
 
   this.buildChain = function(words, metadata) {
     //Inject timestamp to ID metadata
@@ -46,11 +63,15 @@ module.exports.MarkovChain = function(size = 1) {
       // If is a start word, and isn't already indexed as a start word
       if(i === 0 && !this.startWords[word]) {
         this.startWords.set(word, this.chain.get(word));
+        this.chain.get(__START__).nextWords.set(word, (this.chain.get(__START__).nextWords.get(word) || 0) + 1);
+        this.chain.get(__START__).nw++;
       }
 
       // If is an end word, and isn't already indexed as an end word
       if(i == (words.length - (this.stateSize)) && !this.endWords.has(word)) {
         this.endWords.set(word, this.chain.get(word));
+        this.chain.get(__END__).previousWords.set(word, (this.chain.get(__END__).previousWords.get(word) || 0) + 1);
+        this.chain.get(__END__).pw++;
       }
 
       // If there is a next word, add it to the list of next words for the current word
