@@ -4,7 +4,7 @@
   "description": "Flexible Markov-like Chains strings using a simple graph data structure",
   "main": "src/Markov.js",
   "scripts": {
-    "test": "npm run jest",
+    "test": "npx jest",
     "example": "node ./test/example.js",
     "lint": "eslint"
   },
@@ -21,8 +21,15 @@
     "wikipedia": "^1.1.9"
   },
   "jest": {
-    "moduleFileExtensions": ["js", "jsx"],
-    "moduleDirectories": ["node_modules", "src", "test"]
+    "moduleFileExtensions": [
+      "js",
+      "jsx"
+    ],
+    "moduleDirectories": [
+      "node_modules",
+      "src",
+      "test"
+    ]
   },
   "devDependencies": {
     "chance": "^1.1.9",
@@ -32,6 +39,6 @@
     "eslint-plugin-jest": "^27.2.3",
     "eslint-plugin-n": "^16.0.1",
     "eslint-plugin-promise": "^6.1.1",
-    "jest": "^29.4.3"
+    "jest": "^29.7.0"
   }
 }
