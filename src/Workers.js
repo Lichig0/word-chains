@@ -7,10 +7,56 @@ const JOBS = {
     FIND_END_PATHS: 'find_end_paths',
 };
 
+const MESSAGES = {
+    ERROR: 'error',
+    DONE: 'done',
+    REQUEST: 'request',
+    RESPONSE: 'response'
+}
+
+const CORPUS_REQUESTS = {
+    GET_CHAIN_DATA: 'get_chain_data',
+    GET_START_WORDS: 'get_start_words', 
+    GET_END_WORDS: 'get_end_words',
+    GET_WORD_DATA: 'get_word_data'
+}
+
 const __END__ = 1;
 const __START__ = 0;
 
-// WIP
+// Helper functions for requesting corpus data
+const requestWordData = async (word) => {
+    parentPort.postMessage({ type: MESSAGES.REQUEST, request: CORPUS_REQUESTS.GET_WORD_DATA, word });
+    return new Promise((resolve) => {
+        parentPort.once('message', (message) => {
+            if (message.type === MESSAGES.RESPONSE && message.request === CORPUS_REQUESTS.GET_WORD_DATA) {
+                resolve(message.data);
+            }
+        });
+    });
+};
+
+const requestStartWords = async () => {
+    parentPort.postMessage({ type: MESSAGES.REQUEST, request: CORPUS_REQUESTS.GET_START_WORDS });
+    return new Promise((resolve) => {
+        parentPort.once('message', (message) => {
+            if (message.type === MESSAGES.RESPONSE && message.request === CORPUS_REQUESTS.GET_START_WORDS) {
+                resolve(message.data);
+            }
+        });
+    });
+};
+
+const requestEndWords = async () => {
+    parentPort.postMessage({ type: MESSAGES.REQUEST, request: CORPUS_REQUESTS.GET_END_WORDS });
+    return new Promise((resolve) => {
+        parentPort.once('message', (message) => {
+            if (message.type === MESSAGES.RESPONSE && message.request === CORPUS_REQUESTS.GET_END_WORDS) {
+                resolve(message.data);
+            }
+        });
+    });
+};
 const _generateSentence = async (corpus, input) => {
     const chainWorkers = [
         _createStartChainWorker(corpus, input),
@@ -32,8 +78,7 @@ const _generateSentence = async (corpus, input) => {
 
 }
 
-const _findChainEnd = (corpus, word) => {
-    const { chain, endWords } = corpus;
+const _findChainEnd = async (word) => {
     let referenced = {};
     let initTime = Date.now();
     let currentWord = word;
@@ -46,11 +91,17 @@ const _findChainEnd = (corpus, word) => {
         list.push(token);
     };
 
+    // Get initial set of end words for reference
+    const endWords = await requestEndWords();
+
     // const pathEnd = _pathToEnd(corpus, currentWord);
     // console.log(pathEnd);
 
     // Keep generating words until we reach the end of the chain
-    while (currentWord && chain.has(currentWord) && currentWord !== 1) {
+    while (currentWord && currentWord !== 1) {
+        const wordData = await requestWordData(currentWord);
+        if (!wordData) break;
+
         if (Date.now() - initTime > 6000) {
             const eWords = Array.from(endWords.keys());
             currentWord = eWords[Math.floor(Math.random() * eWords.length)];
@@ -59,8 +110,9 @@ const _findChainEnd = (corpus, word) => {
             sentence = ` ${currentWord}`;
             break;
         }
+
         // Choose a random next word from the list of next words for the current word
-        const nextWord = _chooseRandomNextWord(corpus, currentWord);
+        const nextWord = await _chooseRandomNextWord(currentWord, wordData);
         
         // If we couldn't choose a next word, break out of the loop
         if (!nextWord || ((sentence + sentence).indexOf(sentence, 1) != sentence.length)) {
@@ -77,7 +129,8 @@ const _findChainEnd = (corpus, word) => {
         _addToken(nextWord)
         // Set the current word to the next word
         currentWord = nextWord;
-        referenced = { ...referenced, ...chain.get(nextWord)?.refs };
+        const nextWordData = await requestWordData(currentWord)
+        referenced = { ...referenced, ...nextWordData?.refs };
     }
     return {sentence, referenced, list};
 }
@@ -151,10 +204,8 @@ const _pathToEnd = ( corpus, currentToken, visits = 1, visited = new Set().add(c
 }
 
 // A helper function that chooses a random next word from the list of next words for a given word
-const _chooseRandomNextWord = (corpus, word) => {
-    const { chain, endWords } = corpus;
-    // Get the list of next words for the given word
-    const nextWords = chain.get(word).nextWords;
+const _chooseRandomNextWord = async (word, wordData) => {
+    const nextWords = wordData.nextWords;
 
     // If there are no next words, return null
     if (nextWords.size === 0) {
@@ -164,29 +215,16 @@ const _chooseRandomNextWord = (corpus, word) => {
     // Choose a random index from the list of next words
     const nextWordIndex = Math.floor(Math.random() * nextWords.size);
 
-    // Choose the next word based on it's weight.
-    /*
-     * What if calculated weights like this and select for multiple paths at once? No... probably not
-     * W -> a || b || c
-     * a -> t || u
-     * b -> v
-     * c -> x || y || z
-     * At state W = [a, b, c] as [10, 5, 6]
-     * a = [t, u] as [8, 2]
-     * b = [v] as [7]
-     * c = [x, y, z] as [4, 10, 3]
-     * 
-     * So that [10, 5, 6] * [[8,2],[7],[4,10,3]]
-    */
-    const select = Math.random() * chain.get(word).nw + 1;
-    let accumulate = chain.get(word).nw;
+    const select = Math.random() * wordData.nw + 1;
+    let accumulate = wordData.nw;
     let picked = Array.from(nextWords.keys())[nextWordIndex];
+    
     for (const next of nextWords.keys()) {
         accumulate -= nextWords.get(next);
-        const inAfterWords = Object.values(chain.get(word).refs).some((reference) => {
-            word.split(' ').some(w => {
+        const inAfterWords = Object.values(wordData.refs).some((reference) => {
+            return word.split(' ').some(w => {
                 return reference?.afterWords?.includes(w);
-            })
+            });
         });
         if (accumulate <= select && next !== word || inAfterWords) {
             picked = next;
@@ -198,8 +236,7 @@ const _chooseRandomNextWord = (corpus, word) => {
 
 };
 
-const _findChainStart = (corpus, word) => {
-    const { chain, startWords } = corpus;
+const _findChainStart = async (word) => {
     let referenced = {};
     let initTime = Date.now();
     let currentWord = word;
@@ -212,7 +249,12 @@ const _findChainStart = (corpus, word) => {
         list.push(token);
     };
 
-    while (currentWord && chain.has(currentWord) && currentWord !== 0) {
+    const startWords = await requestStartWords();
+
+    while (currentWord && currentWord !== 0) {
+        const wordData = await requestWordData(currentWord);
+        if (!wordData) break;
+
         // Stop if taking too long
         if (Date.now() - initTime > 6000) {
             const sWords = Array.from(startWords.keys());
@@ -224,7 +266,7 @@ const _findChainStart = (corpus, word) => {
         }
 
         // Choose a random previous word from the list of previous words for the current word
-        const previousWord = _chooseRandomPreviousWord(corpus, currentWord);
+        const previousWord = _chooseRandomPreviousWord(currentWord, wordData);
 
         // If we couldn't choose a previous word, break out of the loop
         if (!previousWord || ((sentence + sentence).indexOf(sentence, 1) != sentence.length)) {
@@ -241,16 +283,16 @@ const _findChainStart = (corpus, word) => {
         _addToken(previousWord);
         // Set the current word to the previous word
         currentWord = previousWord;
-        referenced = { ...referenced, ...chain.get(previousWord)?.refs };
+        const previousWordData = await requestWordData(currentWord)
+        referenced = { ...referenced, ...previousWordData?.refs };
     }
     return {sentence, referenced, list: list.reverse()};
 }
 
 // A helper function that chooses a random previous word form the list of previous words for a given word
-const _chooseRandomPreviousWord = function (corpus, word) {
-    const { chain, startWords } = corpus;
+const _chooseRandomPreviousWord = function (word, wordData) {
     // Get the list of previous words for the given word
-    const previousWords = chain.get(word).previousWords;
+    const previousWords = wordData.previousWords;
     // If there are no previous words, return null
     if (previousWords.size === 0) {
         return null;
@@ -262,12 +304,18 @@ const _chooseRandomPreviousWord = function (corpus, word) {
     // Return the previous word at the chosen index
 
     // Choose the next word based on it's weight.
-    const select = Math.random() * chain.get(word).pw + 1;
-    let accumulate = chain.get(word).pw;
+    const select = Math.random() * wordData.pw + 1;
+    let accumulate = wordData.pw;
     let picked = Array.from(previousWords.keys())[previousWordIndex];
+
     for (const previous of previousWords.keys()) {
         accumulate += previousWords.get(previous);
-        if (accumulate <= select && previous !== word) {
+        const inBeforeWords = Object.values(wordData.refs).some((reference) => {
+            return word.split(' ').some(w => {
+                return reference?.beforeWords?.includes(w);
+            });
+        });
+        if (accumulate <= select && previous !== word || inBeforeWords) {
             picked = previous;
             break;
         }
@@ -288,16 +336,22 @@ const _removeOverlap = (tokens) => {
 
 switch (workerData?.job) {
     case JOBS.CREATE_SENTENCE:
-        _generateSentence(workerData.corpus, workerData.options).then(parentPort.postMessage)
+        _generateSentence(workerData.options).then(parentPort.postMessage);
         break;
     case JOBS.CHOOSE_RANDOM_PREV_WORD:
-        parentPort.postMessage(_findChainStart(workerData.corpus, workerData.options.word));
+        _findChainStart(workerData.options.word)
+            .then(result => parentPort.postMessage(result))
+            .catch(error => parentPort.postMessage({ type: MESSAGES.ERROR, error }));
         break;
     case JOBS.CHOOSE_RANDOM_NEXT_WORD:
-        parentPort.postMessage(_findChainEnd(workerData.corpus, workerData?.options.word));
+        _findChainEnd(workerData.options.word)
+            .then(result => parentPort.postMessage(result))
+            .catch(error => parentPort.postMessage({ type: MESSAGES.ERROR, error }));
         break;
     case JOBS.FIND_END_PATHS:
-        parentPort.postMessage(_pathToEnd(workerData.corpus, workerData.options.word));
+        _pathToEnd(workerData.options.word)
+            .then(result => parentPort.postMessage(result))
+            .catch(error => parentPort.postMessage({ type: MESSAGES.ERROR, error }));
         break;
     default:
         throw (`${workerData?.job} is not a valid job.`)

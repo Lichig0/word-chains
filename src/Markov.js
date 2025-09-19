@@ -7,9 +7,22 @@ const JOBS = {
   CHOOSE_RANDOM_NEXT_WORD: 'find_rand_next_word',
 };
 
+const MESSAGES = {
+    ERROR: 'error',
+    DONE: 'done',
+    REQUEST: 'request',
+    RESPONSE: 'response'
+};
+const CORPUS_REQUESTS = {
+    GET_CHAIN_DATA: 'get_chain_data',
+    GET_START_WORDS: 'get_start_words', 
+    GET_END_WORDS: 'get_end_words',
+    GET_WORD_DATA: 'get_word_data'
+}
+
 const __END__ = 1;
 const __START__ = 0;
-const __TOKENIZER_VERSION__ = 2; // 1 Is the old simple split; 2 uses a large RegEx
+const __TOKENIZER_VERSION__ = 1; // 1 Is the old simple split; 2 uses a large RegEx
 
 module.exports.tokenTransformer = function(size = 1) {
   this.tokenSize = size;
@@ -45,7 +58,7 @@ module.exports.tokenTransformer = function(size = 1) {
     // For each element on the array, add the next <token size> elements to the current element
     const result = words.map((word, index, words) => {
       let list = [word];
-      // This location in the arry will end up with the rest of the list, no need to keep going.
+      // This location in the array will end up with the rest of the list, no need to keep going.
       // If this were a normal loop, a break could be used instead?
       if(words.length - index < this.tokenSize) {
         return;
@@ -152,7 +165,7 @@ module.exports.MarkovChain = function(size = 1) {
         if(typeof str === 'string') {
           this.addString(str, data, arr[index+1]);
         } else if(Array.isArray(str)) {
-          // Perhapse flatten incoming arrays?
+          // Perhaps flatten incoming arrays?
           console.warn('Do not feed Arrays of Arrays');
           return;
         } else {
@@ -196,8 +209,8 @@ module.exports.MarkovChain = function(size = 1) {
       // sentence = this.startWords.get(input) ? input.split(' ').shift() : input;
 
       const chainWorkers = [
-        _createStartChainWorker(this.corpus, input),
-        _createEndChainWorker(this.corpus, input)
+        _createStartChainWorker(input),
+        _createEndChainWorker(input)
       ];
 
       const [startChain, endChain] = await Promise.all(chainWorkers).catch(console.error)
@@ -231,29 +244,65 @@ module.exports.MarkovChain = function(size = 1) {
     }
   }
 
-  const _createEndChainWorker = (corpus, word) => {
+  const _handleWorkerMessage = (worker, message) => {
+    if (message.type === MESSAGES.REQUEST) {
+      switch (message.request) {
+        case CORPUS_REQUESTS.GET_WORD_DATA:
+          const wordData = this.chain.get(message.word);
+          worker.postMessage({
+            type: MESSAGES.RESPONSE,
+            request: CORPUS_REQUESTS.GET_WORD_DATA,
+            data: wordData
+          });
+          break;
+
+        case CORPUS_REQUESTS.GET_START_WORDS:
+          worker.postMessage({
+            type: MESSAGES.RESPONSE,
+            request: CORPUS_REQUESTS.GET_START_WORDS,
+            data: this.startWords
+          });
+          break;
+
+        case CORPUS_REQUESTS.GET_END_WORDS:
+          worker.postMessage({
+            type: MESSAGES.RESPONSE,
+            request: CORPUS_REQUESTS.GET_END_WORDS,
+            data: this.endWords
+          });
+          break;
+      }
+    }
+  };
+
+  const _createEndChainWorker = (word) => {
     return new Promise((resolve, reject) => {
       const endChainWorker = new Worker(`${__dirname}/Workers.js`, {
         workerData: {
-          corpus,
           job: JOBS.CHOOSE_RANDOM_NEXT_WORD,
           options: {
             word          
           }
         }
       });
+
       this._workers.set(endChainWorker.threadId, endChainWorker);
-      endChainWorker.on('message', resolve);
+      endChainWorker.on('message', (message) => {
+        if (message.type === MESSAGES.REQUEST) {
+          _handleWorkerMessage(endChainWorker, message);
+        } else {
+          resolve(message);
+        }
+      });
       endChainWorker.on('messageerror', reject);
       endChainWorker.on('close', () => this._workers.delete(endChainWorker.threadId))
     });
   }
 
-  const _createStartChainWorker = (corpus, word) => {
+  const _createStartChainWorker = (word) => {
     return new Promise((resolve, reject) => {
       const startChainWorker = new Worker(`${__dirname}/Workers.js`, {
         workerData: {
-          corpus,
           job: JOBS.CHOOSE_RANDOM_PREV_WORD,
           options: {
             word          
@@ -261,7 +310,13 @@ module.exports.MarkovChain = function(size = 1) {
         }
       });
       this._workers.set(startChainWorker.threadId, startChainWorker);
-      startChainWorker.on('message', resolve);
+      startChainWorker.on('message', (message) => {
+        if (message.type === MESSAGES.REQUEST) {
+          _handleWorkerMessage(startChainWorker, message);
+        } else {
+          resolve(message);
+        }
+      });
       startChainWorker.on('messageerror', reject);
       startChainWorker.on('exit', () => this._workers.delete(startChainWorker.threadId))
     });
